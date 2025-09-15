@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kitchen Alchemy - Results</title>
+  <style>
+    body{font-family:Arial,sans-serif;background:#e6ffe6;margin:0;}
+    header{padding:15px;background:white;box-shadow:0 2px 5px rgba(0,0,0,0.1);display:flex;justify-content:space-between;align-items:center;}
+    header h2{margin:0;color:#228B22;}
+    #darkModeBtn{padding:8px 15px;border:none;border-radius:20px;background:#228B22;color:white;cursor:pointer;}
+    #darkModeBtn:hover{background:#196619;}
+    .container{max-width:950px;margin:20px auto;padding:20px;background:white;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.1);}
+    .grid-container{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px;}
+    .recipe-card{border-radius:10px;background:white;overflow:hidden;box-shadow:4px 4px 12px rgba(0,0,0,0.1);transition:0.2s;}
+    .recipe-card:hover{transform:translateY(-5px);box-shadow:6px 6px 16px rgba(0,0,0,0.15);}
+    .recipe-image{width:100%;height:180px;object-fit:cover;}
+    .recipe-card-content{padding:15px;}
+    .recipe-card h3{margin:0;color:#228B22;}
+    .recipe-card a, .recipe-card button{margin-top:10px;padding:8px 15px;background:#228B22;color:white;text-decoration:none;border:none;border-radius:5px;cursor:pointer;display:inline-block;}
+    .recipe-card a:hover,.recipe-card button:hover{background:#196619;}
+    footer{text-align:center;padding:15px;margin-top:30px;background:#333;color:white;}
+    body.dark{background:#1a1a1a;color:#f1f1f1;}
+    body.dark header,body.dark .container{background:#333;color:white;}
+  </style>
+</head>
+<body>
+  <header>
+    <h2>🍳 Kitchen Alchemy Results</h2>
+    <button id="darkModeBtn">🌙 Dark Mode</button>
+  </header>
+
+  <div class="container">
+    <h2 id="resultTitle">Results</h2>
+    <div id="loading">Loading...</div>
+    <div id="results"></div>
+  </div>
+
+  <footer>&copy; 2025 Kitchen Alchemy</footer>
+
+  <script>
+    const API_KEY = 'dc25198905d143ab92093e318c70dfb4';
+
+    // Dark Mode
+    const darkBtn = document.getElementById("darkModeBtn");
+    darkBtn.addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+      darkBtn.textContent = document.body.classList.contains("dark") ? "☀️ Light Mode" : "🌙 Dark Mode";
+    });
+
+    // Parse URL params
+    const params = new URLSearchParams(window.location.search);
+    const query = params.get("query");
+    const showFavorites = params.get("favorites");
+
+    async function fetchRecipes(term){
+      document.getElementById("loading").style.display="block";
+      try{
+        const res = await fetch(`https://api.spoonacular.com/recipes/findByIngredients?ingredients=${encodeURIComponent(term)}&number=12&apiKey=${API_KEY}`);
+        const data = await res.json();
+        displayRecipes(data);
+      }catch(e){document.getElementById("results").innerHTML=`<p>Error: ${e.message}</p>`;}
+      finally{document.getElementById("loading").style.display="none";}
+    }
+
+    function saveToFavorites(recipe){
+      let favs = JSON.parse(localStorage.getItem("favorites"))||[];
+      if(!favs.some(r=>r.id===recipe.id)){favs.push(recipe);localStorage.setItem("favorites",JSON.stringify(favs));alert("Saved!");}
+      else alert("Already in favorites!");
+    }
+
+    function displayRecipes(recipes){
+      if(!recipes||recipes.length===0){document.getElementById("results").innerHTML="<p>No recipes found.</p>";return;}
+      const html = `<div class="grid-container">` + recipes.map(r=>`
+        <div class="recipe-card">
+          <img class="recipe-image" src="${r.image}" alt="${r.title}">
+          <div class="recipe-card-content">
+            <h3>${r.title}</h3>
+            <p>✅ Used: ${r.usedIngredientCount||0} ❌ Missing: ${r.missedIngredientCount||0}</p>
+            <a href="https://spoonacular.com/recipes/${r.title.replace(/\s+/g,'-')}-${r.id}" target="_blank">View Recipe</a>
+            <button onclick='saveToFavorites(${JSON.stringify(r)})'>❤️ Save</button>
+          </div>
+        </div>
+      `).join('') + "</div>";
+      document.getElementById("results").innerHTML = html;
+    }
+
+    if(showFavorites){
+      document.getElementById("resultTitle").textContent="❤️ Your Favorites";
+      const favs = JSON.parse(localStorage.getItem("favorites"))||[];
+      displayRecipes(favs);
+    }else if(query){
+      document.getElementById("resultTitle").textContent=`Results for "${query}"`;
+      fetchRecipes(query);
+    }
+  </script>
+</body>
+</html>
